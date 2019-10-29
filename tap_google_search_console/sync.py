@@ -324,6 +324,7 @@ def sync(client, config, catalog, state):
         write_schema(catalog, stream_name)
         endpoint_config = STREAMS[stream_name]
         bookmark_field = next(iter(endpoint_config.get('replication_keys', [])), None)
+        body_params = endpoint_config.get('body', {})
         endpoint_total = 0
         # Initialize body
         body = endpoint_config.get('body', {})
@@ -338,8 +339,8 @@ def sync(client, config, catalog, state):
             path = endpoint_config.get('path').format(site_encoded)
 
             # Set dimension_list for performance_reports
-            dimensions_list = []
-            if stream_name == 'performance_reports':
+            if stream_name == 'performance_report_custom':
+                dimensions_list = []
                 # Create dimensions_list from catalog breadcrumb
                 stream = catalog.get_stream(stream_name)
                 mdata = metadata.to_map(stream.metadata)
@@ -348,11 +349,13 @@ def sync(client, config, catalog, state):
                     if singer.metadata.get(mdata, ('properties', dim), 'selected'):
                         # metadata is selected for the dimension
                         dimensions_list.append(dim)
+                body_params['dimensions'] = dimensions_list
+            dimensions_list = body_params.get('dimensions')
 
             # loop through each sub type
             sub_types = endpoint_config.get('sub_types', ['self'])
             for sub_type in sub_types:
-                if stream_name == 'performance_reports':
+                if stream_name.startswith('performance_report'):
                     reports_dttm_str = get_bookmark(
                         state,
                         stream_name,
@@ -361,10 +364,10 @@ def sync(client, config, catalog, state):
                         start_date)
                     reports_dt_str = transform_datetime(reports_dttm_str)[:10]
                     body = {
-                        'dimensions': dimensions_list,
                         'searchType': sub_type,
                         'startDate': reports_dt_str,
-                        'endDate': now_dt_str
+                        'endDate': now_dt_str,
+                        **body_params
                     }
 
                 LOGGER.info('START Syncing Stream: {}, Site: {}, Type: {}'.format(
