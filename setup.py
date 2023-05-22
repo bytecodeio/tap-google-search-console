@@ -10,7 +10,7 @@ setup(name='tap-google-search-console',
       py_modules=['tap_google_search_console'],
       install_requires=[
           'backoff==1.8.0',
-          'requests==2.20.0',
+          'requests==2.31.0',
           'singer-python==5.8.0'
       ],
       entry_points='''
